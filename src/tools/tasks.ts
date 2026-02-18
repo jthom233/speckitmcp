@@ -2,9 +2,10 @@ import { z } from "zod";
 import * as fs from "fs/promises";
 import * as path from "path";
 import type { ToolDef } from "./index.js";
+import { featureNameSchema, assertPathWithinRoot } from "../validation.js";
 
 const inputSchema = z.object({
-  feature_name: z.string().describe("Name of the feature to create tasks for."),
+  feature_name: featureNameSchema.describe("Name of the feature to create tasks for."),
   project_path: z
     .string()
     .optional()
@@ -80,16 +81,14 @@ export const tasksTool: ToolDef = {
     const input = inputSchema.parse(args);
     const root = path.resolve(input.project_path);
     const featureDir = path.join(root, "specs", input.feature_name);
+    assertPathWithinRoot(featureDir, root);
     const tasksPath = path.join(featureDir, "tasks.md");
 
     await fs.mkdir(featureDir, { recursive: true });
 
     const content =
       input.content ??
-      DEFAULT_TASKS.replace(/\{FEATURE\}/g, input.feature_name).replace(
-        /\{DATE\}/g,
-        new Date().toISOString().split("T")[0]
-      );
+      DEFAULT_TASKS.replace(/\{FEATURE\}/g, input.feature_name);
 
     await fs.writeFile(tasksPath, content, "utf-8");
 

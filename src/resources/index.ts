@@ -1,8 +1,8 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+import { assertPathWithinRoot } from "../validation.js";
 
-// Project root - defaults to cwd, can be overridden
 function getProjectRoot(): string {
   return process.env.SPECKIT_PROJECT_PATH ?? process.cwd();
 }
@@ -61,8 +61,8 @@ export async function listResources() {
           });
         }
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error(`Failed to read templates directory: ${err}`);
     }
   }
 
@@ -88,8 +88,8 @@ export async function listResources() {
           }
         }
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error(`Failed to read specs directory: ${err}`);
     }
   }
 
@@ -98,8 +98,6 @@ export async function listResources() {
 
 export async function readResource(uri: string) {
   const root = getProjectRoot();
-
-  // Parse the URI
   const parsed = uri.replace("speckit://", "");
 
   let filePath: string;
@@ -108,9 +106,12 @@ export async function readResource(uri: string) {
     filePath = path.join(root, ".specify", "memory", "constitution.md");
   } else if (parsed.startsWith("templates/")) {
     const templateName = parsed.replace("templates/", "");
+    // Validate template name has no path traversal
+    if (templateName.includes("..") || templateName.includes("/") || templateName.includes("\\")) {
+      throw new McpError(ErrorCode.InvalidParams, `Invalid template name: ${templateName}`);
+    }
     filePath = path.join(root, ".specify", "templates", `${templateName}.md`);
   } else if (parsed.startsWith("specs/")) {
-    // specs/{feature}/{artifact}
     const parts = parsed.replace("specs/", "").split("/");
     if (parts.length !== 2) {
       throw new McpError(
@@ -118,13 +119,18 @@ export async function readResource(uri: string) {
         `Invalid spec URI format: ${uri}. Expected speckit://specs/{feature}/{artifact}`
       );
     }
-    filePath = path.join(root, "specs", parts[0], `${parts[1]}.md`);
+    const [featureName, artifactName] = parts;
+    // Validate no path traversal in either part
+    if (featureName.includes("..") || artifactName.includes("..")) {
+      throw new McpError(ErrorCode.InvalidParams, `Path traversal not allowed in URI: ${uri}`);
+    }
+    filePath = path.join(root, "specs", featureName, `${artifactName}.md`);
   } else {
-    throw new McpError(
-      ErrorCode.InvalidParams,
-      `Unknown resource URI: ${uri}`
-    );
+    throw new McpError(ErrorCode.InvalidParams, `Unknown resource URI: ${uri}`);
   }
+
+  // Final path traversal check
+  assertPathWithinRoot(filePath, root);
 
   try {
     const content = await fs.readFile(filePath, "utf-8");
@@ -138,9 +144,6 @@ export async function readResource(uri: string) {
       ],
     };
   } catch {
-    throw new McpError(
-      ErrorCode.InvalidParams,
-      `Resource not found: ${filePath}`
-    );
+    throw new McpError(ErrorCode.InvalidParams, `Resource not found: ${filePath}`);
   }
 }

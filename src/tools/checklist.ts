@@ -2,9 +2,10 @@ import { z } from "zod";
 import * as fs from "fs/promises";
 import * as path from "path";
 import type { ToolDef } from "./index.js";
+import { featureNameSchema, assertPathWithinRoot } from "../validation.js";
 
 const inputSchema = z.object({
-  feature_name: z.string().describe("Name of the feature to create a checklist for."),
+  feature_name: featureNameSchema.describe("Name of the feature to create a checklist for."),
   project_path: z
     .string()
     .optional()
@@ -93,6 +94,7 @@ export const checklistTool: ToolDef = {
     const input = inputSchema.parse(args);
     const root = path.resolve(input.project_path);
     const featureDir = path.join(root, "specs", input.feature_name);
+    assertPathWithinRoot(featureDir, root);
     const checklistPath = path.join(featureDir, "checklist.md");
 
     await fs.mkdir(featureDir, { recursive: true });

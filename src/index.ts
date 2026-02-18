@@ -7,7 +7,8 @@ async function main() {
   const server = createServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("spec-kit-mcp server started on stdio");
+  // Log to stderr — stdout is reserved for MCP protocol messages
+  console.error("[spec-kit-mcp] server running on stdio");
 }
 
 main().catch((error) => {

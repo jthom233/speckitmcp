@@ -26,7 +26,7 @@ export const initTool: ToolDef = {
   definition: {
     name: "speckit_init",
     description:
-      "Initialize a new spec-kit project. Creates .specify/ directory with templates, constitution, and agent command files.",
+      "Initialize a new spec-kit project. Creates .specify/ directory with templates, constitution, and agent command files. Automatically confirms if the directory is non-empty.",
     inputSchema: {
       type: "object",
       properties: {
@@ -79,10 +79,11 @@ export const initTool: ToolDef = {
 
     cliArgs.push("--ignore-agent-tools");
 
-    // Auto-accept the "directory not empty" prompt
+    // Pipe "y\n" to stdin to auto-accept "directory not empty" confirmation
     const result = await runSpecKitCli(cliArgs, {
       cwd: input.project_path,
       timeout: 120_000,
+      stdin: "y\n",
     });
 
     const output = [result.stdout, result.stderr].filter(Boolean).join("\n");

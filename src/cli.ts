@@ -1,7 +1,4 @@
-import { exec } from "child_process";
-import { promisify } from "util";
-
-const execAsync = promisify(exec);
+import { spawn } from "child_process";
 
 export interface CliResult {
   stdout: string;
@@ -13,6 +10,7 @@ const DEFAULT_TIMEOUT = 60_000;
 
 /**
  * Execute the spec-kit CLI (`specify` command) with given arguments.
+ * Uses spawn() to support stdin for interactive prompts.
  */
 export async function runSpecKitCli(
   args: string[],
@@ -23,43 +21,67 @@ export async function runSpecKitCli(
   }
 ): Promise<CliResult> {
   const timeout = options?.timeout ?? DEFAULT_TIMEOUT;
-  const cmd = `specify ${args.join(" ")}`;
 
-  try {
-    const result = await execAsync(cmd, {
+  return new Promise((resolve) => {
+    const child = spawn("specify", args, {
       cwd: options?.cwd,
-      timeout,
-      maxBuffer: 10 * 1024 * 1024,
+      shell: true,
       windowsHide: true,
     });
 
-    return {
-      stdout: result.stdout,
-      stderr: result.stderr,
-      exitCode: 0,
-    };
-  } catch (error: unknown) {
-    const execError = error as {
-      stdout?: string;
-      stderr?: string;
-      code?: number | string;
-      killed?: boolean;
-    };
+    let stdout = "";
+    let stderr = "";
+    let killed = false;
 
-    if (execError.killed) {
-      return {
-        stdout: execError.stdout ?? "",
-        stderr: `Command timed out after ${timeout}ms. Try increasing the timeout.`,
-        exitCode: 124,
-      };
+    const timer = setTimeout(() => {
+      killed = true;
+      child.kill();
+    }, timeout);
+
+    child.stdout.on("data", (data: Buffer) => {
+      stdout += data.toString();
+    });
+
+    child.stderr.on("data", (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    // Send stdin if provided (e.g. "y\n" for interactive prompts)
+    if (options?.stdin) {
+      child.stdin.write(options.stdin);
+      child.stdin.end();
+    } else {
+      child.stdin.end();
     }
 
-    return {
-      stdout: execError.stdout ?? "",
-      stderr: execError.stderr ?? String(error),
-      exitCode: typeof execError.code === "number" ? execError.code : 1,
-    };
-  }
+    child.on("error", (err: Error) => {
+      clearTimeout(timer);
+      resolve({
+        stdout,
+        stderr: stderr || err.message,
+        exitCode: 1,
+      });
+    });
+
+    child.on("close", (code: number | null) => {
+      clearTimeout(timer);
+
+      if (killed) {
+        resolve({
+          stdout,
+          stderr: `Command timed out after ${timeout}ms. Try increasing the timeout.`,
+          exitCode: 124,
+        });
+        return;
+      }
+
+      resolve({
+        stdout,
+        stderr,
+        exitCode: code ?? 1,
+      });
+    });
+  });
 }
 
 /**

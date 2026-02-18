@@ -2,6 +2,7 @@ import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { initTool } from "./init.js";
 import { checkTool } from "./check.js";
 import { statusTool } from "./status.js";
+import { versionTool } from "./version.js";
 import { specifyTool } from "./specify.js";
 import { planTool } from "./plan.js";
 import { tasksTool } from "./tasks.js";
@@ -26,6 +27,7 @@ export interface ToolDef {
 const tools: ToolDef[] = [
   initTool,
   checkTool,
+  versionTool,
   statusTool,
   constitutionTool,
   specifyTool,
