@@ -1,0 +1,38 @@
+{
+  "name": "speckitmcp",
+  "version": "1.0.0",
+  "description": "MCP server for GitHub Spec-Kit — Spec-Driven Development toolkit",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "speckitmcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "keywords": [
+    "mcp",
+    "spec-kit",
+    "spec-driven-development",
+    "ai",
+    "specification"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jthom233/speckitmcp.git"
+  }
+}
