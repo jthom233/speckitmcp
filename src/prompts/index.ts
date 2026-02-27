@@ -278,7 +278,7 @@ Use the speckit_taskstoissues tool to parse tasks.md and create GitHub issues.
 
 Key details:
 - **dry_run** (default true): Preview issues that would be created without actually creating them. Set to false to create them.
-- **labels** param: Comma-separated list of labels to apply to all created issues (e.g., "feature,speckit")
+- **labels** param: Array of label strings to apply to all created issues (e.g., ["feature", "speckit"])
 - Task parsing format: Tasks must have IDs like T001, T002, etc. The tool also extracts priorities and user story references ([US1], [P1], etc.)
 - Run with dry_run=true first to review the issue list before committing
 

@@ -125,17 +125,17 @@ The server exposes **13 tools** that map to every phase of the SDD workflow:
 | Tool | Description |
 |---|---|
 | `speckit_init` | Initialize spec-kit project structure |
-| `speckit_check` | Run spec-kit validation checks |
+| `speckit_check` | Check spec-kit installation and system prerequisites |
 | `speckit_version` | Get spec-kit CLI version |
 | `speckit_status` | View project status with task completion stats |
-| `speckit_constitution` | Read, write, or create project constitution with version bumping |
-| `speckit_specify` | Create feature specifications with script integration and template loading |
-| `speckit_plan` | Multi-phase planning (research, design, plan) with constitution gate |
-| `speckit_tasks` | Generate user-story-organized task lists with prerequisites check |
-| `speckit_implement` | Track task completion with checklist gate and regex-safe marking |
-| `speckit_clarify` | Scan spec.md for ambiguities or answer them inline (scan/answer actions) |
-| `speckit_analyze` | 6-pass analysis (duplication, ambiguity, underspecification, constitution, coverage, inconsistency) |
-| `speckit_checklist` | Generate requirement quality checklists in checklists/ subdirectory |
+| `speckit_constitution` | Read, create, or update project constitution with optional version bumping |
+| `speckit_specify` | Create feature spec with template loading, script integration, and auto-generated quality checklist |
+| `speckit_plan` | Multi-phase planning (research, design, plan) with spec prerequisite and constitution gate |
+| `speckit_tasks` | Generate user-story-organized task lists (requires spec.md and plan.md) |
+| `speckit_implement` | Read tasks/docs, mark tasks complete with checklist gate, or add notes |
+| `speckit_clarify` | Scan spec.md for ambiguities (9 categories, max 5 questions) or answer them inline |
+| `speckit_analyze` | Read-only 6-pass analysis: duplication, ambiguity, underspecification, constitution alignment, coverage gaps, inconsistency |
+| `speckit_checklist` | Generate requirement quality checklists (spec quality, not implementation) in checklists/ subdirectory |
 | `speckit_tasks_to_issues` | Convert tasks.md to GitHub issues (dry-run by default) |
 
 ### Key Features
@@ -191,18 +191,19 @@ Ten built-in prompts guide your AI agent through each SDD phase:
 ## The SDD Workflow
 
 ```
-  init → specify → clarify → plan → tasks → checklist → analyze → implement → tasks_to_issues
+  init → constitution → specify → clarify → plan → tasks → checklist → analyze → implement → tasks_to_issues
 ```
 
 1. **Init** — `speckit_init` — Scaffold the project with `.specify/` templates
-2. **Specify** — `speckit_specify` — Define requirements as prioritized user stories with template loading
-3. **Clarify** — `speckit_clarify` — Scan for and resolve ambiguities before committing to a plan
-4. **Plan** — `speckit_plan` — Multi-phase planning gated on project constitution
-5. **Tasks** — `speckit_tasks` — Generate user-story-organized task lists with prerequisites check
-6. **Checklist** — `speckit_checklist` — Generate requirement quality checklists
-7. **Analyze** — `speckit_analyze` — 6-pass validation of spec / plan / tasks alignment
-8. **Implement** — `speckit_implement` — Track completion with checklist gate and regex-safe marking
-9. **Tasks to Issues** — `speckit_tasks_to_issues` — Push tasks to GitHub as issues
+2. **Constitution** — `speckit_constitution` — Define project principles and governance before specifying
+3. **Specify** — `speckit_specify` — Define requirements as prioritized user stories with template loading
+4. **Clarify** — `speckit_clarify` — Scan for and resolve ambiguities before committing to a plan
+5. **Plan** — `speckit_plan` — Multi-phase planning gated on project constitution
+6. **Tasks** — `speckit_tasks` — Generate user-story-organized task lists with prerequisites check
+7. **Checklist** — `speckit_checklist` — Generate requirement quality checklists
+8. **Analyze** — `speckit_analyze` — 6-pass validation of spec / plan / tasks alignment
+9. **Implement** — `speckit_implement` — Track completion with checklist gate and regex-safe marking
+10. **Tasks to Issues** — `speckit_tasks_to_issues` — Push tasks to GitHub as issues
 
 ---
 
