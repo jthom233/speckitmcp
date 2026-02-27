@@ -26,8 +26,8 @@ It exposes the full **Spec-Driven Development (SDD)** workflow as MCP **tools**,
 - Initialize and manage spec-kit projects
 - Author specifications, technical plans, and task breakdowns
 - Track implementation progress and mark tasks complete
-- Validate cross-artifact consistency
-- Generate quality checklists
+- Validate cross-artifact consistency with a 6-pass analysis engine
+- Generate quality checklists and convert tasks to GitHub issues
 
 All without leaving your editor.
 
@@ -120,21 +120,33 @@ The server communicates over **stdio** using the standard MCP JSON-RPC protocol.
 
 ## Tools
 
-The server exposes **11 tools** that map to every phase of the SDD workflow:
+The server exposes **13 tools** that map to every phase of the SDD workflow:
 
-| Tool | Phase | Description |
-|---|---|---|
-| `speckit_init` | Setup | Initialize a new spec-kit project with templates and agent commands |
-| `speckit_check` | Setup | Verify spec-kit CLI and prerequisites are installed |
-| `speckit_status` | Any | Show project status — which specs, plans, and tasks exist |
-| `speckit_constitution` | Foundation | Read or write the project constitution (principles, tech stack, governance) |
-| `speckit_specify` | Specification | Create or update a feature spec with user stories and acceptance criteria |
-| `speckit_clarify` | Refinement | Manage clarification questions to de-risk ambiguous requirements |
-| `speckit_plan` | Planning | Create or update a technical implementation plan |
-| `speckit_tasks` | Breakdown | Create or update a phased task breakdown with dependencies |
-| `speckit_implement` | Execution | Track progress, mark tasks complete, add implementation notes |
-| `speckit_analyze` | Validation | Analyze cross-artifact consistency and surface gaps |
-| `speckit_checklist` | Quality | Generate validation checklists (functional, security, etc.) |
+| Tool | Description |
+|---|---|
+| `speckit_init` | Initialize spec-kit project structure |
+| `speckit_check` | Run spec-kit validation checks |
+| `speckit_version` | Get spec-kit CLI version |
+| `speckit_status` | View project status with task completion stats |
+| `speckit_constitution` | Read, write, or create project constitution with version bumping |
+| `speckit_specify` | Create feature specifications with script integration and template loading |
+| `speckit_plan` | Multi-phase planning (research, design, plan) with constitution gate |
+| `speckit_tasks` | Generate user-story-organized task lists with prerequisites check |
+| `speckit_implement` | Track task completion with checklist gate and regex-safe marking |
+| `speckit_clarify` | Scan spec.md for ambiguities or answer them inline (scan/answer actions) |
+| `speckit_analyze` | 6-pass analysis (duplication, ambiguity, underspecification, constitution, coverage, inconsistency) |
+| `speckit_checklist` | Generate requirement quality checklists in checklists/ subdirectory |
+| `speckit_tasks_to_issues` | Convert tasks.md to GitHub issues (dry-run by default) |
+
+### Key Features
+
+- **Script integration** — Platform-aware bash/powershell helper scripts invoked automatically
+- **Template loading** — Loads templates from `.specify/templates/` with embedded fallbacks
+- **Prerequisites checking** — Tools verify prior artifacts exist before proceeding
+- **Constitution gate** — Planning phase reads the project constitution as mandatory context
+- **Checklist gate** — Implementation checks for incomplete checklist items before marking tasks done
+- **6-pass analysis engine** — Catches duplication, ambiguity, underspecification, constitution violations, coverage gaps, and inconsistencies
+- **GitHub issue creation** — Convert a tasks.md file into GitHub issues via `speckit_tasks_to_issues`
 
 ---
 
@@ -145,45 +157,52 @@ The server exposes spec-kit project files as read-only MCP resources:
 | URI | Content |
 |---|---|
 | `speckit://constitution` | Project constitution |
-| `speckit://templates/{name}` | Spec-kit Markdown templates |
+| `speckit://templates/{name}` | Spec-kit templates |
 | `speckit://specs/{feature}/spec` | Feature specification |
-| `speckit://specs/{feature}/plan` | Technical implementation plan |
-| `speckit://specs/{feature}/tasks` | Task breakdown |
-| `speckit://specs/{feature}/checklist` | Validation checklist |
-| `speckit://specs/{feature}/clarifications` | Clarification Q&A |
+| `speckit://specs/{feature}/plan` | Implementation plan |
+| `speckit://specs/{feature}/tasks` | Task list |
+| `speckit://specs/{feature}/research` | Research notes |
+| `speckit://specs/{feature}/data-model` | Data model |
+| `speckit://specs/{feature}/quickstart` | Quickstart guide |
+| `speckit://specs/{feature}/checklists/{name}` | Quality checklists |
+| `speckit://specs/{feature}/contracts/{name}` | API contracts |
 
 ---
 
 ## Prompts
 
-Five built-in prompts guide your AI agent through each SDD phase:
+Ten built-in prompts guide your AI agent through each SDD phase:
 
 | Prompt | Purpose |
 |---|---|
 | `sdd_workflow` | End-to-end walkthrough of the full SDD lifecycle |
-| `sdd_constitution` | Guided creation of project principles and governance |
 | `sdd_specify` | Structured feature specification authoring |
+| `sdd_clarify` | Guided ambiguity resolution |
 | `sdd_plan` | Technical planning with architecture and stack decisions |
 | `sdd_tasks` | Task breakdown with phasing, dependencies, and parallelism |
+| `sdd_implement` | Task execution and progress tracking |
+| `sdd_checklist` | Requirement quality checklist generation |
+| `sdd_analyze` | Cross-artifact consistency validation |
+| `sdd_constitution` | Guided creation of project principles and governance |
+| `sdd_taskstoissues` | Convert tasks to GitHub issues |
 
 ---
 
 ## The SDD Workflow
 
 ```
-  Init ➜ Constitution ➜ Specify ➜ Clarify* ➜ Plan ➜ Tasks ➜ Implement ➜ Analyze* ➜ Checklist*
-                                    optional                                optional    optional
+  init → specify → clarify → plan → tasks → checklist → analyze → implement → tasks_to_issues
 ```
 
 1. **Init** — `speckit_init` — Scaffold the project with `.specify/` templates
-2. **Constitution** — `speckit_constitution` — Lock in principles, tech stack, quality bar
-3. **Specify** — `speckit_specify` — Define requirements as prioritized user stories
-4. **Clarify** — `speckit_clarify` — Resolve ambiguities before committing to a plan
-5. **Plan** — `speckit_plan` — Decide architecture, data model, implementation order
-6. **Tasks** — `speckit_tasks` — Break the plan into phased, parallelizable work items
-7. **Implement** — `speckit_implement` — Execute tasks, track completion
-8. **Analyze** — `speckit_analyze` — Validate spec / plan / tasks alignment
-9. **Checklist** — `speckit_checklist` — Final quality gate before shipping
+2. **Specify** — `speckit_specify` — Define requirements as prioritized user stories with template loading
+3. **Clarify** — `speckit_clarify` — Scan for and resolve ambiguities before committing to a plan
+4. **Plan** — `speckit_plan` — Multi-phase planning gated on project constitution
+5. **Tasks** — `speckit_tasks` — Generate user-story-organized task lists with prerequisites check
+6. **Checklist** — `speckit_checklist` — Generate requirement quality checklists
+7. **Analyze** — `speckit_analyze` — 6-pass validation of spec / plan / tasks alignment
+8. **Implement** — `speckit_implement` — Track completion with checklist gate and regex-safe marking
+9. **Tasks to Issues** — `speckit_tasks_to_issues` — Push tasks to GitHub as issues
 
 ---
 
@@ -191,26 +210,28 @@ Five built-in prompts guide your AI agent through each SDD phase:
 
 ```
 src/
-├── index.ts                 # Entry point — stdio transport
-├── server.ts                # MCP server — handler registration
-├── cli.ts                   # spec-kit CLI wrapper (child_process)
+├── index.ts                   # Entry point — stdio transport
+├── server.ts                  # MCP server — handler registration
+├── cli.ts                     # spec-kit CLI wrapper (child_process)
 ├── tools/
-│   ├── index.ts             # Tool registry
-│   ├── init.ts              # speckit_init
-│   ├── check.ts             # speckit_check
-│   ├── status.ts            # speckit_status
-│   ├── constitution.ts      # speckit_constitution
-│   ├── specify.ts           # speckit_specify
-│   ├── plan.ts              # speckit_plan
-│   ├── tasks.ts             # speckit_tasks
-│   ├── implement.ts         # speckit_implement
-│   ├── clarify.ts           # speckit_clarify
-│   ├── analyze.ts           # speckit_analyze
-│   └── checklist.ts         # speckit_checklist
+│   ├── index.ts               # Tool registry
+│   ├── init.ts                # speckit_init
+│   ├── check.ts               # speckit_check
+│   ├── version.ts             # speckit_version
+│   ├── status.ts              # speckit_status
+│   ├── constitution.ts        # speckit_constitution
+│   ├── specify.ts             # speckit_specify
+│   ├── plan.ts                # speckit_plan
+│   ├── tasks.ts               # speckit_tasks
+│   ├── implement.ts           # speckit_implement
+│   ├── clarify.ts             # speckit_clarify
+│   ├── analyze.ts             # speckit_analyze
+│   ├── checklist.ts           # speckit_checklist
+│   └── tasks-to-issues.ts     # speckit_tasks_to_issues
 ├── resources/
-│   └── index.ts             # MCP resource handlers
+│   └── index.ts               # MCP resource handlers
 └── prompts/
-    └── index.ts             # SDD workflow prompts
+    └── index.ts               # SDD workflow prompts
 ```
 
 ---
