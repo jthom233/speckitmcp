@@ -3,9 +3,57 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import type { ToolDef } from "./index.js";
 import { featureNameSchema, assertPathWithinRoot } from "../validation.js";
+import { resolveProjectRoot, checkProjectInitialized } from "../project.js";
+import { runHelperScript } from "../scripts.js";
+import { loadTemplate } from "../templates.js";
+
+const DEFAULT_TASKS = `# Tasks: {FEATURE}
+
+**Input**: Design documents from specs/{FEATURE}/
+**Prerequisites**: plan.md (required), spec.md (required)
+
+## Phase 1: Setup
+
+- [ ] [T001] [P1] Initialize project structure per implementation plan
+- [ ] [T002] [P1] Install dependencies and configure build tools
+
+## Phase 2: Foundational
+
+- [ ] [T003] [P1] Implement core data models
+- [ ] [T004] [P1] Implement primary business logic
+- [ ] [T005] [P1] Implement main interface (API/UI/CLI)
+
+## Phase 3: User Stories — P1
+
+- [ ] [T006] [P1] [US1] [Brief user story title — replace me]
+
+## Phase 4: User Stories — P2
+
+- [ ] [T007] [P2] [US2] [Brief user story title — replace me]
+
+## Phase 5: User Stories — P3+
+
+- [ ] [T008] [P3] [US3] [Brief user story title — replace me]
+
+## Phase 6: Polish
+
+- [ ] [T009] [P1] Error handling and input validation
+- [ ] [T010] [P1] Documentation
+- [ ] [T011] [P1] Testing and coverage
+
+## Dependencies
+
+- Phase 2 depends on Phase 1
+- Phase 3 depends on Phase 2
+- Phase 4 depends on Phase 3 (can start early)
+- Phase 5 depends on Phase 3 (can start early)
+- Phase 6 depends on all previous phases
+`;
 
 const inputSchema = z.object({
-  feature_name: featureNameSchema.describe("Name of the feature to create tasks for."),
+  feature_name: featureNameSchema.describe(
+    "Name of the feature to create tasks for."
+  ),
   project_path: z
     .string()
     .optional()
@@ -16,40 +64,6 @@ const inputSchema = z.object({
     .optional()
     .describe("Tasks content in markdown. If omitted, creates from template."),
 });
-
-const DEFAULT_TASKS = `# Tasks: {FEATURE}
-
-**Input**: Design documents from specs/{FEATURE}/
-**Prerequisites**: plan.md (required), spec.md (required)
-
-## Phase 1: Setup
-
-- [ ] T001 Initialize project structure per implementation plan
-- [ ] T002 Install dependencies and configure build tools
-
-## Phase 2: Core Implementation
-
-- [ ] T003 Implement core data models
-- [ ] T004 Implement primary business logic
-- [ ] T005 Implement main interface (API/UI/CLI)
-
-## Phase 3: Features
-
-- [ ] T006 [P] Implement feature 1
-- [ ] T007 [P] Implement feature 2
-
-## Phase 4: Polish
-
-- [ ] T008 Error handling and validation
-- [ ] T009 Documentation
-- [ ] T010 Testing
-
-## Dependencies
-
-- Phase 2 depends on Phase 1
-- Phase 3 depends on Phase 2
-- Phase 4 depends on Phase 3
-`;
 
 export const tasksTool: ToolDef = {
   definition: {
@@ -79,16 +93,62 @@ export const tasksTool: ToolDef = {
 
   async execute(args: Record<string, unknown>) {
     const input = inputSchema.parse(args);
-    const root = path.resolve(input.project_path);
+    const root = resolveProjectRoot(input.project_path as string | undefined);
+    const projectInfo = await checkProjectInitialized(root);
+    const { scriptsDir, templatesDir } = projectInfo;
+
     const featureDir = path.join(root, "specs", input.feature_name);
     assertPathWithinRoot(featureDir, root);
     const tasksPath = path.join(featureDir, "tasks.md");
 
+    // Gate: spec.md must exist
+    const specPath = path.join(featureDir, "spec.md");
+    try {
+      await fs.access(specPath);
+    } catch {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `spec.md must exist before creating tasks. Run speckit_specify first.`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // Gate: plan.md must exist
+    const planPath = path.join(featureDir, "plan.md");
+    try {
+      await fs.access(planPath);
+    } catch {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `plan.md must exist before creating tasks. Run speckit_plan first.`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // Best-effort: run check-prerequisites script
+    await runHelperScript("check-prerequisites", [input.feature_name], {
+      cwd: root,
+      scriptsDir,
+    });
+
     await fs.mkdir(featureDir, { recursive: true });
 
+    const tasksTemplate = await loadTemplate(
+      "tasks-template",
+      templatesDir,
+      DEFAULT_TASKS
+    );
     const content =
       input.content ??
-      DEFAULT_TASKS.replace(/\{FEATURE\}/g, input.feature_name);
+      tasksTemplate.replace(/\{FEATURE\}/g, input.feature_name);
 
     await fs.writeFile(tasksPath, content, "utf-8");
 

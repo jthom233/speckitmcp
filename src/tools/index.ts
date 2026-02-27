@@ -11,6 +11,7 @@ import { clarifyTool } from "./clarify.js";
 import { analyzeTool } from "./analyze.js";
 import { checklistTool } from "./checklist.js";
 import { constitutionTool } from "./constitution.js";
+import { tasksToIssuesTool } from "./taskstoissues.js";
 
 export interface ToolDef {
   definition: {
@@ -37,6 +38,7 @@ const tools: ToolDef[] = [
   clarifyTool,
   analyzeTool,
   checklistTool,
+  tasksToIssuesTool,
 ];
 
 const toolMap = new Map(tools.map((t) => [t.definition.name, t]));
